@@ -14,47 +14,31 @@ class ExcelChatbot:
             "composición 15 a 64": "composición de la población en años (porcentaje) (15 a 64)",
             "composición 65 a más": "composición de la población en años (porcentaje) (65 a más)",
             "fecundidad total": "tasa de fecundidad total",
-            "poblacion": "población"
+            "poblacion": "población (miles)"
         }
-
-    def combinar_encabezados(self, sheet):
-        encabezados = []
-
-        for col in range(1, sheet.max_column + 1):
-            encabezado_actual = ""
-            valor_fila_1 = sheet.cell(row=1, column=col).value
-            valor_fila_2 = sheet.cell(row=2, column=col).value
-            valor_fila_3 = sheet.cell(row=3, column=col).value
-            valor_fila_4 = sheet.cell(row=4, column=col).value
-
-            if valor_fila_1 and valor_fila_1.strip():
-                encabezado_actual = valor_fila_1.strip().lower()
-            if valor_fila_2 and valor_fila_2.strip():
-                encabezado_actual += f" ({valor_fila_2.strip().lower()})"
-            if valor_fila_3 and valor_fila_3.strip():
-                encabezado_actual += f" ({valor_fila_3.strip().lower()})"
-            if valor_fila_4 and valor_fila_4.strip():
-                encabezado_actual += f" ({valor_fila_4.strip().lower()})"
-
-            encabezados.append(encabezado_actual)
-
-        return [encabezado.strip() for encabezado in encabezados]
 
     def obtener_valor(self, pais, categoria):
         wb = openpyxl.load_workbook(self.excel_file)
         sheet = wb.active
 
-        encabezados = self.combinar_encabezados(sheet)
-        encabezados = [encabezado.strip().lower() for encabezado in encabezados]
+        categorias_columnas = {
+            "poblacion": "B",
+            "composición 0 a 14": "C",
+            "composición 15 a 64": "D",
+            "composición 65 a más": "E",
+            "fecundidad total": "F",
+            "esperanza de vida hombre": "G",
+            "esperanza de vida mujer": "H"
+        }
 
-        for row in sheet.iter_rows(min_row=5, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column, values_only=True):
-            if row[0] is not None:
-                nombre_pais = row[0].strip().lower()
-                if pais.lower() == nombre_pais:
-                    categoria_mapeada = self.categorias_mapeadas.get(categoria)
-                    if categoria_mapeada in encabezados:
-                        indice_categoria = encabezados.index(categoria_mapeada)
-                        return row[indice_categoria]
+        # Buscar la fila del país
+        for row in range(5, sheet.max_row + 1):
+            if sheet[f"A{row}"].value.lower() == pais.lower():
+                if categoria in categorias_columnas:
+                    if categoria.startswith("composición") or categoria.startswith("esperanza de vida"):
+                        return sheet[f"{categorias_columnas[categoria]}{row}"].value
+                    else:
+                        return sheet[f"{categorias_columnas[categoria]}{row}"].value
 
         return None
 
@@ -142,7 +126,7 @@ chatbot = ExcelChatbot(file_path)
 # Obtener la lista de países
 wb = openpyxl.load_workbook(file_path)
 sheet = wb.active
-countries = [row[0] for row in sheet.iter_rows(min_row=5, max_row=sheet.max_row, min_col=1, max_col=1, values_only=True) if row[0]]
+countries = [sheet[f"A{row}"].value for row in range(5, sheet.max_row + 1) if sheet[f"A{row}"].value]
 
 # Crear la interfaz de usuario
 root = tk.Tk()
@@ -158,13 +142,13 @@ question_label = ttk.Label(mainframe, text="Seleccione su pregunta:")
 question_label.grid(column=1, row=1, sticky=(tk.W, tk.E))
 
 questions = [
-    "¿Cuál es la población?",
-    "¿Cuál es la composición de la población de 0 a 14 años?",
-    "¿Cuál es la composición de la población de 15 a 64 años?",
-    "¿Cuál es la composición de la población de 65 a más años?",
-    "¿Cuál es la tasa de fecundidad total?",
-    "¿Cuál es la esperanza de vida al nacer para hombres?",
-    "¿Cuál es la esperanza de vida al nacer para mujeres?",
+    "¿Cuál es la población ",
+    "¿Cuál es la composición de la población de 0 a 14 años",
+    "¿Cuál es la composición de la población de 15 a 64 años",
+    "¿Cuál es la composición de la población de 65 a más años",
+    "¿Cuál es la tasa de fecundidad total",
+    "¿Cuál es la esperanza de vida al nacer para hombres",
+    "¿Cuál es la esperanza de vida al nacer para mujeres",
 ]
 
 question_combo = ttk.Combobox(mainframe, values=questions, width=80)
@@ -203,5 +187,5 @@ chat_log.grid(column=1, row=9, columnspan=2, sticky=(tk.W, tk.E))
 
 for child in mainframe.winfo_children():
     child.grid_configure(padx=5, pady=5)
-
+    
 root.mainloop()
